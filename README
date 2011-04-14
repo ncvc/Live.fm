@@ -1,0 +1,13 @@
+Live.fm allows users to find live music near their current location using the Last.fm web API.
+
+The Live.fm source has two main components: the server and the client.
+
+Server:
+	Written in Python using Google App Engine.
+	Returns information about events at a given location from either:
+		Internal cache (Not implemented yet)
+		Last.fm API
+
+Client:
+	Written in Java using the Android SDK.
+	Displays the user's current location on a map and events near the user.
