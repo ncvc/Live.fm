@@ -7,6 +7,8 @@ Server:
 	Returns information about events at a given location from either:
 		Internal cache (Not implemented yet)
 		Last.fm API
+	
+	Development info - Server/.pydevproject - The {GOOGLE_APP_ENGINE} path variable may have to be modified to point to your google_appengine folder.  This can be done in eclipse by right-clicking on the Server project and going to 'PyDev - PYTHONPATH'/'String Substitution Variables'
 
 Client:
 	Written in Java using the Android SDK.
