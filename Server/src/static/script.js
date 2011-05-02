@@ -41,7 +41,19 @@ function handleNoGeoLocation() {
 
 function showMap(initialLocation) {
 	map.setCenter(initialLocation);
+	parseXML();
 	infowindow.setContent(contentString);
 	infowindow.setPosition(initialLocation);
 	infowindow.open(map);
+}
+
+function parseXML() {
+	if (window.XMLHttpRequest) {
+		xmlhttp=new XMLHttpRequest();
+	} else {
+		xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+	}
+	xmlhttp.open("GET", "http://ws.audioscrobbler.com/2.0/?method=geo.getevents&location=madrid&api_key=b25b959554ed76058ac220b7b2e0a026", false);
+	xmlhttp.send();
+	contentString=xmlhttp.responseXML;
 }
