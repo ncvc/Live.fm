@@ -134,7 +134,6 @@ class EventCache(webapp.RequestHandler):
 		eventsJSON = eventsFullJSON['events']['event']
 		
 		for eventJSON in eventsJSON:
-			logging.error(eventJSON)
 			event = Event()
 			event.eventID = int(eventJSON['id'])
 			event.eventTitle = eventJSON['title']
