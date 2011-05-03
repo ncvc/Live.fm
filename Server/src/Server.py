@@ -1,5 +1,5 @@
 '''
-Created on Apr 20, 2011
+Created on Apr 17, 2011
 
 @author: Nathan V-C
 '''
@@ -22,6 +22,10 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 from google.appengine.api.urlfetch import fetch, InvalidURLError
 
+DEFAULT_LINK = 'http://www.google.com'
+DEFAULT_IMAGE_LINK = 'http://www.google.com/images/logos/ps_logo2.png'
+DEFAULT_PHONE_NUMBER = '1234567890'
+	
 class Event(db.Model):
 	eventID = db.IntegerProperty()
 	eventTitle = db.StringProperty()
@@ -32,8 +36,8 @@ class Event(db.Model):
 	eventTag = db.StringProperty()
 	eventURL = db.LinkProperty()
 	eventWebsite = db.LinkProperty()
-	eventTickets = db.IntegerProperty()
-	eventCancelled = db.IntegerProperty()
+	eventTickets = db.TextProperty()
+	eventCancelled = db.BooleanProperty()
 	
 	venueID = db.IntegerProperty()
 	venueName = db.StringProperty()
@@ -83,11 +87,16 @@ class EventCache(webapp.RequestHandler):
 			logging.error(e)
 			return
 		
-		eventsJSON = json.loads(response)
+		if self.JSONError(response.content):
+			return
+		
+		eventsJSON = json.loads(response.content)
 		
 		events = self.createEventsFromJSON(eventsJSON)
 		
 		self.addEvents(events)
+		
+		self.response.out.write(response.content)
 	
 	def buildURL(self, json=True):
 		baseURL = 'http://ws.audioscrobbler.com/2.0/'
@@ -113,6 +122,9 @@ class EventCache(webapp.RequestHandler):
 				'page': page,
 				'api_key': LastFMAPIKey}
 		
+		if json:
+			query['format'] = 'json'
+		
 		encoded = urllib.urlencode(query)
 		
 		return '%s?%s' % (baseURL, encoded)
@@ -122,16 +134,17 @@ class EventCache(webapp.RequestHandler):
 		eventsJSON = eventsFullJSON['events']['event']
 		
 		for eventJSON in eventsJSON:
+			logging.error(eventJSON)
 			event = Event()
-			event.eventID = eventJSON['id']
+			event.eventID = int(eventJSON['id'])
 			event.eventTitle = eventJSON['title']
 			
 			artistsJSON = eventJSON['artists']
-			event.artists = artistsJSON['artist']
+			event.artists = self.createStrList(artistsJSON['artist'])
 			event.headliner = artistsJSON['headliner']
 			
 			venueJSON = eventJSON['venue']
-			event.venueID = venueJSON['id']
+			event.venueID = int(venueJSON['id'])
 			event.venueName = venueJSON['name']
 			
 			locJSON = venueJSON['location']
@@ -142,41 +155,73 @@ class EventCache(webapp.RequestHandler):
 			address = '%s\n%s' % (line1, line2)
 			event.venueAddress = db.PostalAddress(address)
 			
-			event.venueURL = db.Link(venueJSON['url'])
-			event.venueWebsite = db.Link(venueJSON['website'])
-			event.venuePhoneNumber = db.PhoneNumber(venueJSON['phonenumber'])
+			event.venueURL = self.createLink(venueJSON['url'])
+			event.venueWebsite = self.createLink(venueJSON['website'])
+			event.venuePhoneNumber = self.createPhoneNumber(venueJSON['phonenumber'])
 			event.venueImageURLs = self.getImageURLs(venueJSON['image'])
 			
-			# Sample string: "Mon, 02 May 2011 22:00:00"
+			# Sample date string: "Mon, 02 May 2011 22:00:00"
 			formatStr = '%a, %d %b %Y %H:%M:%S'
-			event.date = datetime.strptime(eventJSON['startdate'], formatStr)
+			event.date = datetime.strptime(eventJSON['startDate'], formatStr)
 			event.eventDescription = eventJSON['description']
 			event.eventImageURLs = self.getImageURLs(eventJSON['image'])
-			event.eventAttendance = eventJSON['attendance']
-			event.eventReviews = eventJSON['reviews']
+			event.eventAttendance = int(eventJSON['attendance'])
+			event.eventReviews = int(eventJSON['reviews'])
 			event.eventTag = eventJSON['tag']
-			event.eventURL = db.Link(eventJSON['url'])
-			event.eventWebsite = db.Link(eventJSON['website'])
-			event.eventTickets = eventJSON['tickets']
-			event.eventCancelled = eventJSON['cancelled']
+			event.eventURL = self.createLink(eventJSON['url'])
+			event.eventWebsite = self.createLink(eventJSON['website'])
+			event.eventTickets = str(eventJSON['tickets'])
+			event.eventCancelled = bool(int(eventJSON['cancelled']))
+			
+			try:
+				event.tags = self.createStrList(eventJSON['tags']['tag'])
+			except KeyError:
+				pass
 			
 			eventsList.append(event)
 		
 		return eventsList
 	
+	def createStrList(self, JSONStr):
+		if isinstance(JSONStr, unicode) or isinstance(JSONStr, str):
+			return [JSONStr]
+		else:
+			return JSONStr
+	
+	def createLink(self, url, default=DEFAULT_LINK):
+		if url == None or url == '':
+			return db.Link(default)
+		else:
+			return db.Link(url)
+	
+	def createPhoneNumber(self, number, default=DEFAULT_PHONE_NUMBER):
+		if number == None or number == '':
+			return db.PhoneNumber(default)
+		else:
+			return db.PhoneNumber(number)
+	
 	def getImageURLs(self, imagesJSON):
 		imageURLs = []
 		for imageJSON in imagesJSON:
-			imageURLs.append(db.Link(imageJSON['#text']))
+			link = self.createLink(imageJSON['#text'], default=DEFAULT_IMAGE_LINK)
+			imageURLs.append(link)
 		
 		return imageURLs
 		
 	def addEvents(self, events):
 		for event in events:
 			event.put()
+	
+	def JSONError(self, responseJSON):
+		if 'error' in responseJSON:
+			logging.error(responseJSON)
+			return True
+		else:
+			return False
 
-application = webapp.WSGIApplication([('/', MainPage)],
-                                     debug=True)
+application = webapp.WSGIApplication([('/', MainPage),
+									  ('/eventCache', EventCache)],
+									 debug=True)
 
 def main():
 	run_wsgi_app(application)
