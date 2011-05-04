@@ -82,21 +82,21 @@ class EventCache(webapp.RequestHandler):
 		url = self.buildURL()
 		
 		try:
-			response = fetch(url)
+			lastFMResponse = fetch(url)
 		except InvalidURLError as e:
 			logging.error(e)
 			return
 		
-		if self.JSONError(response.content):
+		if self.JSONError(lastFMResponse.content):
 			return
 		
-		eventsJSON = json.loads(response.content)
+		eventsJSON = json.loads(lastFMResponse.content)
 		
 		events = self.createEventsFromJSON(eventsJSON)
 		
 		self.addEvents(events)
 		
-		self.response.out.write(response.content)
+		self.response.out.write(lastFMResponse.content)
 	
 	def buildURL(self, json=True):
 		baseURL = 'http://ws.audioscrobbler.com/2.0/'

@@ -56,10 +56,27 @@ function locationObtained(lat, long) {
 
 function getEvents(lat, long) {
 	jQuery.getJSON("eventCache", function(data) {
-		out.innerHTML = data.toString();
-		var lol = jQuery.parseJSON('{"wat": "lol"}')
-		out.innerHTML = JSON.stringify(data);
+		//out.innerHTML += JSON.stringify(data);
+		$.each(data.events.event, processEvents);
+		out.innerHTML += s;
+		out.innerHTML += "<br />" + output;
 	})
+}
+var s=0;
+var output = "";
+function processEvents(i, event) {
+	s+=1;
+	output += "<br />" + event.title + ": " + JSON.stringify(event.venue.location);
+	geoPoint = event.venue.location["geo:point"];
+	createMarker(new google.maps.LatLng(geoPoint["geo:lat"], geoPoint["geo:long"]), event.title);
+}
+
+function createMarker(latLng, title) {
+	var marker = new google.maps.Marker({
+		position: latLng,
+		map: map,
+		title: title
+	});
 }
 
 function showMap(initialLocation) {
