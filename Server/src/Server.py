@@ -25,6 +25,11 @@ from google.appengine.api.urlfetch import fetch, InvalidURLError
 DEFAULT_LINK = 'http://www.google.com'
 DEFAULT_IMAGE_LINK = 'http://www.google.com/images/logos/ps_logo2.png'
 DEFAULT_PHONE_NUMBER = '1234567890'
+
+LASTFM_API_BASE_URL = 'http://ws.audioscrobbler.com/2.0/'
+DEFAULT_LAT = '42.357097'
+DEFAULT_LONG = '-71.101523'
+		
 	
 class Event(db.Model):
 	eventID = db.IntegerProperty()
@@ -99,10 +104,6 @@ class EventCache(webapp.RequestHandler):
 		self.response.out.write(lastFMResponse.content)
 	
 	def buildURL(self, json=True):
-		baseURL = 'http://ws.audioscrobbler.com/2.0/'
-		defaultLat = '42.357097'
-		defaultLong = '-71.101523'
-		
 		lat = self.request.get('lat', default_value=None)
 		long = self.request.get('long', default_value=None)
 		dist = 10 #km
@@ -110,9 +111,9 @@ class EventCache(webapp.RequestHandler):
 		page = 1
 		
 		if lat == None:
-			lat = defaultLat
+			lat = DEFAULT_LAT
 		if long == None:
-			long = defaultLong
+			long = DEFAULT_LONG
 		
 		query = {'method': 'geo.getevents',
 				'lat': lat,
@@ -127,7 +128,7 @@ class EventCache(webapp.RequestHandler):
 		
 		encoded = urllib.urlencode(query)
 		
-		return '%s?%s' % (baseURL, encoded)
+		return '%s?%s' % (LASTFM_API_BASE_URL, encoded)
 	
 	def createEventsFromJSON(self, eventsFullJSON):
 		eventsList = []

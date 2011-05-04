@@ -4,9 +4,9 @@
  * @author: Nathan V-C
  */
 
-var SIMMONS = new google.maps.LatLng(42.357097, -71.101523);
+var SIMMONS_LATLONG = new google.maps.LatLng(42.357097, -71.101523);
+var EVENT_CACHE_URL = "eventCache";
 var map;
-var infowindow = new google.maps.InfoWindow();
 
 function initialize() {
 	createMap();
@@ -46,43 +46,58 @@ function getLocation() {
 
 function handleNoGeoLocation() {
 	contentString = "Error: The Geolocation service failed. Defaulting to Simmons. Represent!";
-	locationObtained(SIMMONS.lat(), SIMMONS.long());
+	locationObtained(SIMMONS_LATLONG.lat(), SIMMONS_LATLONG.long());
 }
 
 function locationObtained(lat, long) {
-	showMap(new google.maps.LatLng(lat, long));
+	centerMap(new google.maps.LatLng(lat, long));
 	getEvents(lat, long)
 }
 
 function getEvents(lat, long) {
-	jQuery.getJSON("eventCache", function(data) {
+	var lookupURL = EVENT_CACHE_URL + "?lat=" + lat + "&long=" + long;
+	setOut(lookupURL);
+	jQuery.getJSON(lookupURL, function(data) {
 		//out.innerHTML += JSON.stringify(data);
 		$.each(data.events.event, processEvents);
-		out.innerHTML += s;
-		out.innerHTML += "<br />" + output;
+		appendOut(s);
+		appendOut("<br />" + output);
 	})
 }
 var s=0;
-var output = "";
 function processEvents(i, event) {
 	s+=1;
-	output += "<br />" + event.title + ": " + JSON.stringify(event.venue.location);
+	appendOut("<br />" + event.title + ": " + JSON.stringify(event.venue.location));
 	geoPoint = event.venue.location["geo:point"];
 	createMarker(new google.maps.LatLng(geoPoint["geo:lat"], geoPoint["geo:long"]), event.title);
 }
 
-function createMarker(latLng, title) {
-	var marker = new google.maps.Marker({
-		position: latLng,
+function createMarker(latLong, title) {
+	new google.maps.Marker({
+		position: latLong,
 		map: map,
 		title: title
 	});
 }
 
-function showMap(initialLocation) {
+function createInfoWindow(content, latLong) {
+	new google.maps.InfoWindow({
+		position: latLong,
+		map: map,
+		content: content
+	});
+}
+
+function centerMap(initialLocation) {
 	map.setCenter(initialLocation);
 	
-	infowindow.setContent(contentString);
-	infowindow.setPosition(initialLocation);
-	infowindow.open(map);
+	createInfoWindow(contentString, initialLocation)
+}
+
+function setOut(content) {
+	out.innerHTML = content;
+}
+
+function appendOut(content) {
+	out.innerHTML += content;
 }
