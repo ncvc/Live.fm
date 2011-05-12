@@ -7,6 +7,9 @@
 var SIMMONS_LATLONG = new google.maps.LatLng(42.357097, -71.101523);
 var EVENT_CACHE_URL = "eventCache";
 var map;
+var contentString;
+var initialLocation;
+var watchID;
 
 function initialize() {
 	createMap();
@@ -27,13 +30,15 @@ function getLocation() {
 	// Try W3C Geolocation method (Preferred)
 	if(navigator.geolocation) {
 		contentString = "Location found using W3C standard";
-		navigator.geolocation.getCurrentPosition(function (position) {
+		watchID = navigator.geolocation.watchPosition(function(position) {
 			locationObtained(position.coords.latitude, position.coords.longitude);
 		}, handleNoGeoLocation);
+		/*navigator.geolocation.getCurrentPosition(function (position) {
+			locationObtained(position.coords.latitude, position.coords.longitude);
+		}, handleNoGeoLocation);*/
 	} else if (google.gears) {
 		// Try Google Gears Geolocation
 		contentString = "Location found using Google Gears";
-		initialLocation = new google.maps.LatLng(position.latitude, position.longitude);
 		var geo = google.gears.factory.create('beta.geolocation');
 		geo.getCurrentPosition(function (position) {
 			locationObtained(position.latitude, position.longitude);
