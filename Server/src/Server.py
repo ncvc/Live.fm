@@ -13,8 +13,8 @@ import urllib
 from datetime import datetime
 from django.utils import simplejson as json
 
-from APIKeys import GoogleMapsAPIKey
-from APIKeys import LastFMAPIKey
+from APIKeys import GMAPS_API_KEY
+from APIKeys import LASTFM_API_KEY
 
 from google.appengine.ext.webapp import template
 from google.appengine.ext import webapp
@@ -22,14 +22,17 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 from google.appengine.api.urlfetch import fetch, InvalidURLError
 
-DEFAULT_LINK = 'http://www.google.com'
+DEFAULT_LINK = None
 DEFAULT_IMAGE_LINK = 'http://www.google.com/images/logos/ps_logo2.png'
-DEFAULT_PHONE_NUMBER = '1234567890'
+DEFAULT_PHONE_NUMBER = None
 
 LASTFM_API_BASE_URL = 'http://ws.audioscrobbler.com/2.0/'
 DEFAULT_LAT = '42.357097'
 DEFAULT_LONG = '-71.101523'
-		
+DEFAULT_DIST = '10' #km
+DEFAULT_LIMIT = '10'
+
+DEBUG = True
 	
 class Event(db.Model):
 	eventID = db.IntegerProperty()
@@ -76,7 +79,12 @@ class MainPage(webapp.RequestHandler):
 	#                        url = users.create_login_url(self.request.uri)
 	#                        url_linktext = 'Login'
 		
-		template_values = {'GoogleMapsAPIKey': GoogleMapsAPIKey}
+		template_values = {'GoogleMapsAPIKey': GMAPS_API_KEY,
+						   'Size': '100%'}
+		
+		if DEBUG:
+			template_values.update({'Size': '50%',
+									'debug': '<p id="out">out: </p>'})
 		
 		path = os.path.join(os.path.dirname(__file__), 'index.html')
 		self.response.out.write(template.render(path, template_values))
@@ -103,17 +111,13 @@ class EventCache(webapp.RequestHandler):
 		
 		self.response.out.write(lastFMResponse.content)
 	
+	# build the url to retrieve event info from the Last.fm API
 	def buildURL(self, json=True):
-		lat = self.request.get('lat', default_value=None)
-		long = self.request.get('long', default_value=None)
-		dist = 10 #km
-		limit = 10
+		lat = self.request.get('lat', default_value=DEFAULT_LAT)
+		long = self.request.get('long', default_value=DEFAULT_LONG)
+		dist = self.request.get('dist', default_value=DEFAULT_DIST)
+		limit = self.request.get('limit', default_value=DEFAULT_LIMIT)
 		page = 1
-		
-		if lat == None:
-			lat = DEFAULT_LAT
-		if long == None:
-			long = DEFAULT_LONG
 		
 		query = {'method': 'geo.getevents',
 				'lat': lat,
@@ -121,7 +125,7 @@ class EventCache(webapp.RequestHandler):
 				'distance': dist,
 				'limit': limit,
 				'page': page,
-				'api_key': LastFMAPIKey}
+				'api_key': LASTFM_API_KEY}
 		
 		if json:
 			query['format'] = 'json'
@@ -130,6 +134,7 @@ class EventCache(webapp.RequestHandler):
 		
 		return '%s?%s' % (LASTFM_API_BASE_URL, encoded)
 	
+	# Returns a list of Event objects resulting from parsing the given JSON
 	def createEventsFromJSON(self, eventsFullJSON):
 		eventsList = []
 		eventsJSON = eventsFullJSON['events']['event']
@@ -149,10 +154,10 @@ class EventCache(webapp.RequestHandler):
 			
 			locJSON = venueJSON['location']
 			geoJSON = locJSON['geo:point']
-			event.geoPt = db.GeoPt(geoJSON['geo:lat'], geoJSON['geo:long'])
-			line1 = locJSON['street']
-			line2 = '%s, %s %s' % (locJSON['city'], locJSON['country'], locJSON['postalcode'])
-			address = '%s\n%s' % (line1, line2)
+			address, geoPt = self.parseAddress(locJSON['street'], locJSON['city'], locJSON['country'], locJSON['postalcode'])
+			if geoPt == None:
+				geoPt = db.GeoPt(geoJSON['geo:lat'], geoJSON['geo:long'])
+			event.geoPt = geoPt
 			event.venueAddress = db.PostalAddress(address)
 			
 			event.venueURL = self.createLink(venueJSON['url'])
@@ -182,24 +187,36 @@ class EventCache(webapp.RequestHandler):
 		
 		return eventsList
 	
+	# Parses address info and returns an address string and a db.GeoPt
+	def parseAddress(self, street, city, country, postalcode):
+		
+		line1 = street
+		line2 = '%s, %s %s' % (city, country, postalcode)
+		address = '%s\n%s' % (line1, line2)
+		return address, db.GeoPt()
+	
+	# returns a list of string(s) from the given JSON object
 	def createStrList(self, JSONStr):
 		if isinstance(JSONStr, unicode) or isinstance(JSONStr, str):
 			return [JSONStr]
 		else:
 			return JSONStr
 	
+	# Returns a new db.Link from the given URL
 	def createLink(self, url, default=DEFAULT_LINK):
 		if url == None or url == '':
-			return db.Link(default)
+			return default
 		else:
 			return db.Link(url)
 	
+	# Returns a new db.PhoneNumber from the given phone number
 	def createPhoneNumber(self, number, default=DEFAULT_PHONE_NUMBER):
 		if number == None or number == '':
-			return db.PhoneNumber(default)
+			return default
 		else:
 			return db.PhoneNumber(number)
 	
+	# Returns a list of image URLs from the given JSON
 	def getImageURLs(self, imagesJSON):
 		imageURLs = []
 		for imageJSON in imagesJSON:
@@ -207,11 +224,13 @@ class EventCache(webapp.RequestHandler):
 			imageURLs.append(link)
 		
 		return imageURLs
-		
+	
+	# Adds all events to the database
 	def addEvents(self, events):
 		for event in events:
 			event.put()
 	
+	# Returns whether or not an error was returned in the given JSON
 	def JSONError(self, responseJSON):
 		if 'error' in responseJSON:
 			logging.error(responseJSON)

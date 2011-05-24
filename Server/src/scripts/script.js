@@ -5,40 +5,47 @@
  */
 
 var SIMMONS_LATLONG = new google.maps.LatLng(42.357097, -71.101523);
-var EVENT_CACHE_URL = "eventCache";
+var MY_LOC_IMAGE = 'images/blue_dot.png';
+var EVENT_CACHE_URL = 'eventCache';
 var map;
-var contentString;
+var locMethod;
 var initialLocation;
 var watchID;
 
 function initialize() {
 	createMap();
-	''
 	getLocation();
 }
 
 function createMap() {
-	var myOptions = {
+	var options = {
 			zoom: 14,
 			mapTypeId: google.maps.MapTypeId.ROADMAP
 			};
 		
-	map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+	map = new google.maps.Map(document.getElementById('map_canvas'), options);
+}
+
+function setMyLocation(lat, long) {
+	var myLatLng = new google.maps.LatLng(lat, long);
+	
+	var myLocMarker = new google.maps.Marker({
+		position: myLatLng,
+		map: map,
+		icon: MY_LOC_IMAGE
+		});
 }
 
 function getLocation() {
-	// Try W3C Geolocation method (Preferred)
 	if(navigator.geolocation) {
-		contentString = "Location found using W3C standard";
+		// Try W3C Geolocation method (Preferred)
+		locMethod = 'W3C standard';
 		watchID = navigator.geolocation.watchPosition(function(position) {
 			locationObtained(position.coords.latitude, position.coords.longitude);
 		}, handleNoGeoLocation);
-		/*navigator.geolocation.getCurrentPosition(function (position) {
-			locationObtained(position.coords.latitude, position.coords.longitude);
-		}, handleNoGeoLocation);*/
 	} else if (google.gears) {
 		// Try Google Gears Geolocation
-		contentString = "Location found using Google Gears";
+		locMethod = 'Google Gears';
 		var geo = google.gears.factory.create('beta.geolocation');
 		geo.getCurrentPosition(function (position) {
 			locationObtained(position.latitude, position.longitude);
@@ -50,31 +57,32 @@ function getLocation() {
 }
 
 function handleNoGeoLocation() {
-	contentString = "Error: The Geolocation service failed. Defaulting to Simmons. Represent!";
+	locMethod = 'Failed';
 	locationObtained(SIMMONS_LATLONG.lat(), SIMMONS_LATLONG.long());
 }
 
 function locationObtained(lat, long) {
 	centerMap(new google.maps.LatLng(lat, long));
-	getEvents(lat, long)
+	setMyLocation(lat, long);
+	getEvents(lat, long);
 }
 
 function getEvents(lat, long) {
-	var lookupURL = EVENT_CACHE_URL + "?lat=" + lat + "&long=" + long;
-	setOut(lookupURL);
+	var lookupURL = EVENT_CACHE_URL + '?lat=' + lat + '&long=' + long + '&dist=50';
+	appendOut(lookupURL + '<br />');
 	jQuery.getJSON(lookupURL, function(data) {
 		//out.innerHTML += JSON.stringify(data);
 		$.each(data.events.event, processEvents);
 		appendOut(s);
-		appendOut("<br />" + output);
-	})
+		appendOut('<br />' + output);
+	});
 }
 var s=0;
 function processEvents(i, event) {
 	s+=1;
-	appendOut("<br />" + event.title + ": " + JSON.stringify(event.venue.location));
-	geoPoint = event.venue.location["geo:point"];
-	createMarker(new google.maps.LatLng(geoPoint["geo:lat"], geoPoint["geo:long"]), event.title);
+	appendOut('<br />' + event.title + ': ' + JSON.stringify(event.venue.location));
+	geoPoint = event.venue.location['geo:point'];
+	createMarker(new google.maps.LatLng(geoPoint['geo:lat'], geoPoint['geo:long']), event.title);
 }
 
 function createMarker(latLong, title) {
@@ -96,7 +104,7 @@ function createInfoWindow(content, latLong) {
 function centerMap(initialLocation) {
 	map.setCenter(initialLocation);
 	
-	createInfoWindow(contentString, initialLocation)
+	appendOut(locMethod + '<br />');
 }
 
 function setOut(content) {

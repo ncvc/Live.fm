@@ -17,12 +17,12 @@
 			src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js">
 		</script>
 		<script type="text/javascript"
-			src="static/script.js">
+			src="scripts/script.js">
 		</script>
 	</head>
 	
 	<body onload="initialize()">
-		<div id="map_canvas" style="width:50%; height:50%"></div>
-		<p id="out">out: </p>
+		<div id="map_canvas" style="width: {{ Size }}; height: {{ Size }}"></div>
+		{{ debug }}
 	</body>
 </html>

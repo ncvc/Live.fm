@@ -4,8 +4,11 @@ runtime: python
 api_version: 1
 
 handlers:
-- url: /static
-  static_dir: static
+- url: /scripts
+  static_dir: scripts
+  
+- url: /images
+  static_dir: images
   
 - url: /.*
   script: Server.py
