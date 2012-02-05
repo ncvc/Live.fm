@@ -16,6 +16,7 @@ from django.utils import simplejson as json
 from APIKeys import GMAPS_API_KEY
 from APIKeys import LASTFM_API_KEY
 
+from google.appengine.api import taskqueue
 from google.appengine.ext.webapp import template
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
@@ -69,15 +70,15 @@ class Event(db.Model):
 
 class MainPage(webapp.RequestHandler):
 	def get(self):
-	#                greetings_query = Greeting.all().order('-date')
-	#                greetings = greetings_query.fetch(10)
-	#
-	#                if users.get_current_user():
-	#                        url = users.create_logout_url(self.request.uri)
-	#                        url_linktext = 'Logout'
-	#                else:
-	#                        url = users.create_login_url(self.request.uri)
-	#                        url_linktext = 'Login'
+#                greetings_query = Greeting.all().order('-date')
+#                greetings = greetings_query.fetch(10)
+#
+#                if users.get_current_user():
+#                        url = users.create_logout_url(self.request.uri)
+#                        url_linktext = 'Logout'
+#                else:
+#                        url = users.create_login_url(self.request.uri)
+#                        url_linktext = 'Login'
 		
 		template_values = {'GoogleMapsAPIKey': GMAPS_API_KEY,
 						   'Size': '100%'}
@@ -89,13 +90,22 @@ class MainPage(webapp.RequestHandler):
 		path = os.path.join(os.path.dirname(__file__), 'index.html')
 		self.response.out.write(template.render(path, template_values))
 
-
 class EventCache(webapp.RequestHandler):
+	def get(self):
+		lat = self.request.get('lat', default_value=DEFAULT_LAT)
+		long = self.request.get('long', default_value=DEFAULT_LONG)
+		dist = self.request.get('dist', default_value=DEFAULT_DIST)
+		# get closest points
+		self.response.out.write(lastFMResponse.content)
+
+class UpdateCache(webapp.RequestHandler):
 	def get(self):
 		url = self.buildURL()
 		
 		try:
 			lastFMResponse = fetch(url)
+			self.response.out.write(lastFMResponse.content)
+			return
 		except InvalidURLError as e:
 			logging.error(e)
 			return
@@ -109,20 +119,13 @@ class EventCache(webapp.RequestHandler):
 		
 		self.addEvents(events)
 		
-		self.response.out.write(lastFMResponse.content)
 	
 	# build the url to retrieve event info from the Last.fm API
 	def buildURL(self, json=True):
-		lat = self.request.get('lat', default_value=DEFAULT_LAT)
-		long = self.request.get('long', default_value=DEFAULT_LONG)
-		dist = self.request.get('dist', default_value=DEFAULT_DIST)
 		limit = self.request.get('limit', default_value=DEFAULT_LIMIT)
 		page = 1
 		
 		query = {'method': 'geo.getevents',
-				'lat': lat,
-				'long': long,
-				'distance': dist,
 				'limit': limit,
 				'page': page,
 				'api_key': LASTFM_API_KEY}
@@ -239,7 +242,8 @@ class EventCache(webapp.RequestHandler):
 			return False
 
 application = webapp.WSGIApplication([('/', MainPage),
-									  ('/eventCache', EventCache)],
+									  ('/eventCache', EventCache),
+									  ('/updateCache', UpdateCache)],
 									 debug=True)
 
 def main():

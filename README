@@ -1,15 +1,8 @@
-Live.fm allows users to find live music near their current location using the Last.fm web API.
+A first (unfinished) foray into web programming/Google App Engine: Live.fm allows users to find live music near their current location using the Last.fm web API.
 
-The Live.fm source has two main components: the server and the client.
+Written in Python using Google App Engine.
+Returns information about events at a given location from either:
+	Internal cache (Not implemented yet)
+	Last.fm API
 
-Server:
-	Written in Python using Google App Engine.
-	Returns information about events at a given location from either:
-		Internal cache (Not implemented yet)
-		Last.fm API
-	
-	Development info - Server/.pydevproject - The {GOOGLE_APP_ENGINE} path variable may have to be modified to point to your google_appengine folder.  This can be done in eclipse by right-clicking on the Server project and going to 'PyDev - PYTHONPATH'/'String Substitution Variables'.  After modifying the file, tell git to not track any more changes to the file by running 'git update-index --assume-unchanged Server/.pydevproject'
-
-Client:
-	Written in Java using the Android SDK.
-	Displays the user's current location on a map and events near the user.
+Development info - Server/.pydevproject - The {GOOGLE_APP_ENGINE} path variable may have to be modified to point to your google_appengine folder.  This can be done in eclipse by right-clicking on the Server project and going to 'PyDev - PYTHONPATH'/'String Substitution Variables'.  After modifying the file, tell git to not track any more changes to the file by running 'git update-index --assume-unchanged Server/.pydevproject'

@@ -9,6 +9,10 @@ handlers:
   
 - url: /images
   static_dir: images
+
+- url: /updateCache
+  script: Server.py
+  login: admin
   
 - url: /.*
   script: Server.py
